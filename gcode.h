@@ -21,7 +21,11 @@
 
 #ifndef gcode_h
 #define gcode_h
+#ifdef RASPBERRYPI
+#include <raspberrypi.h>
+#else
 #include <avr/io.h>
+#endif
 #include "nuts_bolts.h"
 
 // Define modal group internal numbers for checking multiple command violations and tracking the 

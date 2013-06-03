@@ -23,8 +23,12 @@
    been integral throughout the development of the higher level details of Grbl, as well
    as being a consistent sounding board for the future of accessible and free CNC. */
 
+#ifdef RASPBERRYPI
+#include <raspberrypi.h>
+#else
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
+#endif
 #include "config.h"
 #include "planner.h"
 #include "nuts_bolts.h"

@@ -21,7 +21,11 @@
 #ifndef protocol_h
 #define protocol_h
 
+#ifdef RASPBERRYPI
+#include <raspberrypi.h>
+#else
 #include <avr/sleep.h>
+#endif
 
 // Line buffer size from the serial input stream to be executed.
 // NOTE: Not a problem except for extreme cases, but the line buffer size can be too small

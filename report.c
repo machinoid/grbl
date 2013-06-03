@@ -26,7 +26,11 @@
   methods to accomodate their needs.
 */
 
+#ifdef RASPBERRYPI
+#include <raspberrypi.h>
+#else
 #include <avr/pgmspace.h>
+#endif
 #include "report.h"
 #include "print.h"
 #include "settings.h"

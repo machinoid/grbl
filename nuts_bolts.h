@@ -97,10 +97,19 @@ extern system_t sys;
 int read_float(char *line, uint8_t *char_counter, float *float_ptr);
 
 // Delays variable-defined milliseconds. Compiler compatibility fix for _delay_ms().
+#ifdef RASPBERRYPI
+#define _delay_ms(x) bcm2835_delay(x)
+#define delay_ms(x) bcm2835_delay(x)
+#else
 void delay_ms(uint16_t ms);
+#endif
 
 // Delays variable-defined microseconds. Compiler compatibility fix for _delay_us().
+#ifdef RASPBERRYPI
+#define delay_us(x) bcm2835_delayMicroseconds(x)
+#else
 void delay_us(uint32_t us);
+#endif
 
 // Syncs Grbl's gcode and planner position variables with the system position.
 void sys_sync_current_position();

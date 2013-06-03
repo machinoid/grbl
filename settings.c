@@ -19,7 +19,11 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifdef RASPBERRYPI
+#include <raspberrypi.h>
+#else
 #include <avr/io.h>
+#endif
 #include "protocol.h"
 #include "report.h"
 #include "stepper.h"

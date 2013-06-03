@@ -19,9 +19,12 @@
   You should have received a copy of the GNU General Public License
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
-
+#ifdef RASPBERRYPI
+#include <raspberrypi.h>
+#else
 #include <avr/io.h>
 #include <util/delay.h>
+#endif
 #include <math.h>
 #include <stdlib.h>
 #include "settings.h"
@@ -215,7 +218,10 @@ void mc_dwell(float seconds)
 void mc_go_home()
 {
   sys.state = STATE_HOMING; // Set system state variable
+#ifdef RASPBERRYPI
+#else
   LIMIT_PCMSK &= ~LIMIT_MASK; // Disable hard limits pin change register for cycle duration
+#endif
   
   limits_go_home(); // Perform homing routine.
 
@@ -254,7 +260,10 @@ void mc_go_home()
   sys_sync_current_position();
 
   // If hard limits feature enabled, re-enable hard limits pin change register after homing cycle.
+#ifdef RASPBERRYPI
+#else
   if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) { LIMIT_PCMSK |= LIMIT_MASK; }
+#endif
   // Finished! 
 }
 

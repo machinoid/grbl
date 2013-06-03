@@ -50,6 +50,18 @@
 #define STEPPERS_DISABLE_MASK (1<<STEPPERS_DISABLE_BIT)
 
 // NOTE: All limit bit pins must be on the same port
+#ifdef RASPBERRYPI
+#define LIMIT_DDR       BCM2835_GPFSEL0
+#define LIMIT_PIN       4
+#define LIMIT_PORT      BCM2835_GPLEV0
+#define X_LIMIT_BIT     1  // Uno Digital Pin 9
+#define Y_LIMIT_BIT     2  // Uno Digital Pin 10
+#define Z_LIMIT_BIT     3  // Uno Digital Pin 11
+#define LIMIT_INT       PCIE0  // Pin change interrupt enable pin
+#define LIMIT_INT_vect  PCINT0_vect
+#define LIMIT_PCMSK     BCM2835_GPEDS0 // Pin change interrupt register
+#define LIMIT_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
+#else
 #define LIMIT_DDR       DDRB
 #define LIMIT_PIN       PINB
 #define LIMIT_PORT      PORTB
@@ -60,6 +72,7 @@
 #define LIMIT_INT_vect  PCINT0_vect 
 #define LIMIT_PCMSK     PCMSK0 // Pin change interrupt register
 #define LIMIT_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
+#endif
 
 #define SPINDLE_ENABLE_DDR   DDRB
 #define SPINDLE_ENABLE_PORT  PORTB

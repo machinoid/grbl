@@ -18,10 +18,14 @@
   You should have received a copy of the GNU General Public License
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
-  
+
+#ifdef RASPBERRYPI
+#include <raspberrypi.h>
+#else  
 #include <util/delay.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#endif
 #include "stepper.h"
 #include "settings.h"
 #include "nuts_bolts.h"
@@ -37,6 +41,8 @@
 
 void limits_init() 
 {
+#ifdef RASPBERRYPI
+#else
   LIMIT_DDR &= ~(LIMIT_MASK); // Set as input pins
   LIMIT_PORT |= (LIMIT_MASK); // Enable internal pull-up resistors. Normal high operation.
   if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) {
@@ -46,6 +52,7 @@ void limits_init()
     LIMIT_PCMSK &= ~LIMIT_MASK; // Disable
     PCICR &= ~(1 << LIMIT_INT); 
   }
+#endif
 }
 
 // This is the Limit Pin Change Interrupt, which handles the hard limit feature. A bouncing 
@@ -190,9 +197,15 @@ static void homing_cycle(uint8_t cycle_mask, int8_t pos_dir, bool invert_pin, fl
     if (!(cycle_mask) || (sys.execute & EXEC_RESET)) { return; }
         
     // Perform step.
+#ifdef RASPBERRYPI
+#else
     STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (out_bits & STEP_MASK);
+#endif
     delay_us(settings.pulse_microseconds);
+#ifdef RASPBERRYPI
+#else
     STEPPING_PORT = out_bits0;
+#endif
     delay_us(step_delay);
     
     // Track and set the next step delay, if required. This routine uses another Bresenham

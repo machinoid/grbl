@@ -22,7 +22,11 @@
 /* The timer calculations of this module informed by the 'RepRap cartesian firmware' by Zack Smith
    and Philipp Tiefenbacher. */
 
+#ifdef RASPBERRYPI
+#include <raspberrypi.h>
+#else
 #include <avr/interrupt.h>
+#endif
 #include "stepper.h"
 #include "config.h"
 #include "settings.h"
@@ -86,9 +90,15 @@ void st_wake_up()
 {
   // Enable steppers by resetting the stepper disable port
   if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { 
+#ifdef RASPBERRYPI
+#else
     STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); 
+#endif
   } else { 
+#ifdef RASPBERRYPI
+#else
     STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT);
+#endif
   }
   if (sys.state == STATE_CYCLE) {
     // Initialize stepper output bits
@@ -98,13 +108,22 @@ void st_wake_up()
       // Set total step pulse time after direction pin set. Ad hoc computation from oscilloscope.
       step_pulse_time = -(((settings.pulse_microseconds+STEP_PULSE_DELAY-2)*TICKS_PER_MICROSECOND) >> 3);
       // Set delay between direction pin write and step command.
+#ifdef RASPBERRYPI
+#else
       OCR2A = -(((settings.pulse_microseconds)*TICKS_PER_MICROSECOND) >> 3);
+#endif
     #else // Normal operation
       // Set step pulse time. Ad hoc computation from oscilloscope. Uses two's complement.
+#ifdef RASPBERRYPI
+#else
       step_pulse_time = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND) >> 3);
+#endif
     #endif
     // Enable stepper driver interrupt
+#ifdef RASPBERRYPI
+#else
     TIMSK1 |= (1<<OCIE1A);
+#endif
   }
 }
 
@@ -112,16 +131,25 @@ void st_wake_up()
 void st_go_idle() 
 {
   // Disable stepper driver interrupt
+#ifdef RASPBERRYPI
+#else
   TIMSK1 &= ~(1<<OCIE1A); 
+#endif
   // Disable steppers only upon system alarm activated or by user setting to not be kept enabled.
   if ((settings.stepper_idle_lock_time != 0xff) || bit_istrue(sys.execute,EXEC_ALARM)) {
     // Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
     // stop and not drift from residual inertial forces at the end of the last movement.
     delay_ms(settings.stepper_idle_lock_time);
     if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { 
+#ifdef RASPBERRYPI
+#else
       STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); 
+#endif
     } else { 
+#ifdef RASPBERRYPI
+#else
       STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); 
+#endif
     }   
   }
 }
@@ -149,18 +177,27 @@ ISR(TIMER1_COMPA_vect)
   if (busy) { return; } // The busy-flag is used to avoid reentering this interrupt
   
   // Set the direction pins a couple of nanoseconds before we step the steppers
+#ifdef RASPBERRYPI
+#else
   STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
+#endif
+
   // Then pulse the stepping pins
   #ifdef STEP_PULSE_DELAY
     step_bits = (STEPPING_PORT & ~STEP_MASK) | out_bits; // Store out_bits to prevent overwriting.
   #else  // Normal operation
+#ifdef RASPBERRYPI
+#else
     STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | out_bits;
+#endif
   #endif
   // Enable step pulse reset timer so that The Stepper Port Reset Interrupt can reset the signal after
   // exactly settings.pulse_microseconds microseconds, independent of the main Timer1 prescaler.
+#ifdef RASPBERRYPI
+#else
   TCNT2 = step_pulse_time; // Reload timer counter
   TCCR2B = (1<<CS21); // Begin timer2. Full speed, 1/8 prescaler
-
+#endif
   busy = true;
   // Re-enable interrupts to allow ISR_TIMER2_OVERFLOW to trigger on-time and allow serial communications
   // regardless of time in this handler. The following code prepares the stepper driver for the next
@@ -318,12 +355,15 @@ ISR(TIMER1_COMPA_vect)
 // a few microseconds, if they execute right before one another. Not a big deal, but can
 // cause issues at high step rates if another high frequency asynchronous interrupt is 
 // added to Grbl.
+#ifdef RASPBERRYPI
+#else
 ISR(TIMER2_OVF_vect)
 {
   // Reset stepping pins (leave the direction pins)
   STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask & STEP_MASK); 
   TCCR2B = 0; // Disable Timer2 to prevent re-entering this interrupt when it's not needed. 
 }
+#endif
 
 #ifdef STEP_PULSE_DELAY
   // This interrupt is used only when STEP_PULSE_DELAY is enabled. Here, the step pulse is
@@ -350,6 +390,8 @@ void st_reset()
 void st_init()
 {
   // Configure directions of interface pins
+#ifdef RASPBERRYPI
+#else
   STEPPING_DDR |= STEPPING_MASK;
   STEPPING_PORT = (STEPPING_PORT & ~STEPPING_MASK) | settings.invert_mask;
   STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
@@ -371,6 +413,7 @@ void st_init()
   #ifdef STEP_PULSE_DELAY
     TIMSK2 |= (1<<OCIE2A); // Enable Timer2 Compare Match A interrupt
   #endif
+#endif
 
   // Start in the idle state, but first wake up to check for keep steppers enabled option.
   st_wake_up();
@@ -410,10 +453,13 @@ static uint32_t config_step_timer(uint32_t cycles)
     prescaler = 5;
     actual_cycles = 0xffff * 1024;
   }
+#ifdef RASPBERRYPI
+#else
   // Set prescaler
   TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (prescaler<<CS10);
   // Set ceiling
   OCR1A = ceiling;
+#endif
   return(actual_cycles);
 }
 

@@ -18,9 +18,12 @@
   You should have received a copy of the GNU General Public License
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
-
+#ifdef RASPBERRYPI
+#include <raspberrypi.h>
+#else
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#endif
 #include "protocol.h"
 #include "gcode.h"
 #include "serial.h"
@@ -48,11 +51,14 @@ void protocol_init()
 {
   protocol_reset_line_buffer();
   report_init_message(); // Welcome message   
-  
+
+#ifdef RASPBERRYPI
+#else  
   PINOUT_DDR &= ~(PINOUT_MASK); // Set as input pins
   PINOUT_PORT |= PINOUT_MASK; // Enable internal pull-up resistors. Normal high operation.
   PINOUT_PCMSK |= PINOUT_MASK;   // Enable specific pins of the Pin Change Interrupt
   PCICR |= (1 << PINOUT_INT);   // Enable Pin Change Interrupt
+#endif
 }
 
 // Executes user startup script, if stored.
@@ -71,6 +77,8 @@ void protocol_execute_startup()
   }  
 }
 
+#ifdef RASPBERRYPI
+#else
 // Pin change interrupt for pin-out commands, i.e. cycle start, feed hold, and reset. Sets
 // only the runtime command execute variable to have the main program execute these when 
 // its ready. This works exactly like the character-based runtime commands when picked off
@@ -88,6 +96,7 @@ ISR(PINOUT_INT_vect)
     }
   }
 }
+#endif
 
 // Executes run-time commands, when required. This is called from various check points in the main
 // program, primarily where there may be a while loop waiting for a buffer to clear space or any

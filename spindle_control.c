@@ -28,14 +28,20 @@ static uint8_t current_direction;
 void spindle_init()
 {
   current_direction = 0;
+#ifdef RASPBERRYPI
+#else
   SPINDLE_ENABLE_DDR |= (1<<SPINDLE_ENABLE_BIT);
   SPINDLE_DIRECTION_DDR |= (1<<SPINDLE_DIRECTION_BIT);  
+#endif
   spindle_stop();
 }
 
 void spindle_stop()
 {
+#ifdef RASPBERRYPI
+#else
   SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);
+#endif
 }
 
 void spindle_run(int8_t direction) //, uint16_t rpm) 
@@ -44,11 +50,20 @@ void spindle_run(int8_t direction) //, uint16_t rpm)
     plan_synchronize();
     if (direction) {
       if(direction > 0) {
+#ifdef RASPBERRYPI
+#else
         SPINDLE_DIRECTION_PORT &= ~(1<<SPINDLE_DIRECTION_BIT);
+#endif
       } else {
+#ifdef RASPBERRYPI
+#else
         SPINDLE_DIRECTION_PORT |= 1<<SPINDLE_DIRECTION_BIT;
+#endif
       }
+#ifdef RASPBERRYPI
+#else
       SPINDLE_ENABLE_PORT |= 1<<SPINDLE_ENABLE_BIT;
+#endif
     } else {
       spindle_stop();     
     }

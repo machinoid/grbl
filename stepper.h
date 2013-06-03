@@ -22,7 +22,11 @@
 #ifndef stepper_h
 #define stepper_h 
 
+#ifdef RASPBERRYPI
+#include <raspberrypi.h>
+#else
 #include <avr/io.h>
+#endif
 
 // Initialize and setup the stepper motor subsystem
 void st_init();

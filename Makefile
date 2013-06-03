@@ -42,7 +42,8 @@ FUSES      = -U hfuse:w:0xd2:m -U lfuse:w:0xff:m
 # Tune the lines below only if you know what you are doing:
 
 AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE) -B 10 -F
-COMPILE = avr-gcc -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) -I. -ffunction-sections
+COMPILE = gcc -Wall -Os -DF_CPU=$(CLOCK) -DRASPBERRYPI -I. -I/home/pi/install/include -ffunction-sections
+#COMPILE = avr-gcc -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) -I. -ffunction-sections
 
 # symbolic targets:
 all:	grbl.hex
@@ -79,7 +80,7 @@ clean:
 
 # file targets:
 main.elf: $(OBJECTS)
-	$(COMPILE) -o main.elf $(OBJECTS) -lm -Wl,--gc-sections
+	$(COMPILE) -o main.elf $(OBJECTS) -lm -Wl,--gc-sections -L/home/pi/install/lib -lbcm2835
 
 grbl.hex: main.elf
 	rm -f grbl.hex

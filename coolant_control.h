@@ -21,7 +21,11 @@
 #ifndef coolant_control_h
 #define coolant_control_h 
 
+#ifdef RASPBERRYPI
+#include <raspberrypi.h>
+#else
 #include <avr/io.h>
+#endif
 
 #define COOLANT_MIST_ENABLE 2
 #define COOLANT_FLOOD_ENABLE 1

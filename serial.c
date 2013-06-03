@@ -21,8 +21,11 @@
 
 /* This code was initially inspired by the wiring_serial module by David A. Mellis which
    used to be a part of the Arduino project. */ 
-
+#ifdef RASPBERRYPI
+#include <raspberrypi.h>
+#else
 #include <avr/interrupt.h>
+#endif
 #include "serial.h"
 #include "config.h"
 #include "motion_control.h"
@@ -51,6 +54,8 @@ volatile uint8_t tx_buffer_tail = 0;
 
 void serial_init()
 {
+#ifdef RASPBERRYPI
+#else
   // Set baud rate
   #if BAUD_RATE < 57600
     uint16_t UBRR0_value = ((F_CPU / (8L * BAUD_RATE)) - 1)/2 ;
@@ -68,7 +73,7 @@ void serial_init()
 	
   // enable interrupt on complete reception of a byte
   UCSR0B |= 1<<RXCIE0;
-	  
+#endif	  
   // defaults to 8-bit, no parity, 1 stop bit
 }
 
@@ -85,11 +90,16 @@ void serial_write(uint8_t data) {
   // Store data and advance head
   tx_buffer[tx_buffer_head] = data;
   tx_buffer_head = next_head;
-  
+
+#ifdef RASPBERRYPI
+#else  
   // Enable Data Register Empty Interrupt to make sure tx-streaming is running
   UCSR0B |=  (1 << UDRIE0); 
+#endif
 }
 
+#ifdef RASPBERRYPI
+#else
 // Data Register Empty Interrupt handler
 #ifdef __AVR_ATmega644P__
 ISR(USART0_UDRE_vect)
@@ -123,6 +133,7 @@ ISR(USART_UDRE_vect)
   // Turn off Data Register Empty Interrupt to stop tx-streaming if this concludes the transfer
   if (tail == tx_buffer_head) { UCSR0B &= ~(1 << UDRIE0); }
 }
+#endif
 
 uint8_t serial_read()
 {
@@ -136,7 +147,10 @@ uint8_t serial_read()
     #ifdef ENABLE_XONXOFF
       if ((get_rx_buffer_count() < RX_BUFFER_LOW) && flow_ctrl == XOFF_SENT) { 
         flow_ctrl = SEND_XON;
+#ifdef RASPBERRYPI
+#else
         UCSR0B |=  (1 << UDRIE0); // Force TX
+#endif
       }
     #endif
     
@@ -144,6 +158,8 @@ uint8_t serial_read()
   }
 }
 
+#ifdef RASPBERRYPI
+#else
 #ifdef __AVR_ATmega644P__
 ISR(USART0_RX_vect)
 #else
@@ -179,6 +195,7 @@ ISR(USART_RX_vect)
       }
   }
 }
+#endif
 
 void serial_reset_read_buffer() 
 {

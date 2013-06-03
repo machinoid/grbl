@@ -22,8 +22,11 @@
 /* This code was initially inspired by the wiring_serial module by David A. Mellis which
    used to be a part of the Arduino project. */ 
 
-
+#ifdef RASPBERRYPI
+#include <raspberrypi.h>
+#else
 #include <avr/pgmspace.h>
+#endif
 #include "config.h"
 #include "serial.h"
 #include "settings.h"
@@ -38,8 +41,11 @@ void printString(const char *s)
 void printPgmString(const char *s)
 {
   char c;
+#ifdef RASPBERRYPI
+#else
   while ((c = pgm_read_byte_near(s++)))
     serial_write(c);
+#endif
 }
 
 // void printIntegerInBase(unsigned long n, unsigned long base)

@@ -19,7 +19,11 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifdef RASPBERRYPI
+#include <raspberrypi.h>
+#else
 #include <util/delay.h>
+#endif
 #include "nuts_bolts.h"
 #include "gcode.h"
 #include "planner.h"
@@ -112,15 +116,19 @@ int read_float(char *line, uint8_t *char_counter, float *float_ptr)
 
 // Delays variable defined milliseconds. Compiler compatibility fix for _delay_ms(),
 // which only accepts constants in future compiler releases.
+#ifdef RASPBERRYPI
+#else
 void delay_ms(uint16_t ms) 
 {
   while ( ms-- ) { _delay_ms(1); }
 }
-
+#endif
 
 // Delays variable defined microseconds. Compiler compatibility fix for _delay_us(),
 // which only accepts constants in future compiler releases. Written to perform more 
 // efficiently with larger delays, as the counter adds parasitic time in each iteration.
+#ifdef RASPBERRYPI
+#else
 void delay_us(uint32_t us) 
 {
   while (us) {
@@ -139,6 +147,7 @@ void delay_us(uint32_t us)
     }
   }
 }
+#endif
 
 // Syncs all internal position vectors to the current system position.
 void sys_sync_current_position()
