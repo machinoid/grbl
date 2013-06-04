@@ -7,5 +7,6 @@
 #define sei()
 #define cli()
 #define ISR(m) void ##m(void)
+#define pgm_read_byte_near(s) *s
 #endif
 

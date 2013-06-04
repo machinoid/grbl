@@ -41,11 +41,8 @@ void printString(const char *s)
 void printPgmString(const char *s)
 {
   char c;
-#ifdef RASPBERRYPI
-#else
   while ((c = pgm_read_byte_near(s++)))
     serial_write(c);
-#endif
 }
 
 // void printIntegerInBase(unsigned long n, unsigned long base)

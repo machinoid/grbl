@@ -23,9 +23,60 @@
 ****************************************************************************/
 #ifdef RASPBERRYPI
 #include <raspberrypi.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <fcntl.h>
 #else
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#endif
+
+
+#ifdef RASPBERRYPI
+#define EEPROM_SIZE 2048
+
+void create_eeprom_file(int size )
+{
+        unsigned char c;
+	int i;
+	FILE *fp;
+	fp=fopen("eeprom.bin", "rb");
+        if (fp != NULL)
+		return;
+	fp=fopen("eeprom.bin", "wb");
+	c = 0;
+	for(i=0;i<size;i++)
+		fwrite(&c, 1, 1, fp);
+	fclose(fp);
+}
+
+unsigned char eeprom_file_get_char( unsigned int addr )
+{
+	unsigned char c;
+	FILE *fp;
+	create_eeprom_file(EEPROM_SIZE);
+        fp=fopen("eeprom.bin", "rb");
+	if (fp == NULL)
+		return 0xf;
+	fseek(fp,addr,SEEK_SET);
+	fread(&c,1,1,fp); 
+	fclose(fp);
+	return c;
+}
+
+void eeprom_file_put_char( unsigned int addr, unsigned char new_value )
+{
+        unsigned char c;
+        FILE *fp;
+        create_eeprom_file(EEPROM_SIZE);
+        fp=fopen("eeprom.bin", "wb");
+        if (fp == NULL)
+                return;
+        fseek(fp,addr,SEEK_SET);
+	fwrite(&c, 1, 1, fp);
+	fclose(fp);
+}
+
 #endif
 
 /* These EEPROM bits have different names on different devices. */
@@ -36,7 +87,7 @@
 
 /* These two are unfortunately not defined in the device include files. */
 #define EEPM1 5 //!< EEPROM Programming Mode Bit 1.
-#define EEPM0 4 //!< EEPROM Programming Mode Bit 0.
+#define EEPM0 4 //!< EEPROM Programming Mode Bit -1.
 
 /* Define to reduce code size. */
 #define EEPROM_IGNORE_SELFPROG //!< Remove SPM flag polling.
@@ -53,6 +104,7 @@
 unsigned char eeprom_get_char( unsigned int addr )
 {
 #ifdef RASPBERRYPI
+	return eeprom_file_get_char(addr);
 #else
 	do {} while( EECR & (1<<EEPE) ); // Wait for completion of previous write.
 	EEAR = addr; // Set EEPROM address register.
@@ -81,6 +133,7 @@ unsigned char eeprom_get_char( unsigned int addr )
 void eeprom_put_char( unsigned int addr, unsigned char new_value )
 {
 #ifdef RASPBERRYPI
+	eeprom_file_put_char(addr,new_value);
 #else
 	char old_value; // Old EEPROM value.
 	char diff_mask; // Difference mask, i.e. old value XOR new value.

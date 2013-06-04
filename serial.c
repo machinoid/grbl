@@ -23,6 +23,8 @@
    used to be a part of the Arduino project. */ 
 #ifdef RASPBERRYPI
 #include <raspberrypi.h>
+#include <stdio.h>
+#include <fcntl.h>
 #else
 #include <avr/interrupt.h>
 #endif
@@ -55,6 +57,11 @@ volatile uint8_t tx_buffer_tail = 0;
 void serial_init()
 {
 #ifdef RASPBERRYPI
+	int flags;
+	/* unblock STDIO */
+	flags = fcntl(0, F_GETFL); 
+	flags |= O_NONBLOCK;
+	fcntl(0, F_SETFL, flags);
 #else
   // Set baud rate
   #if BAUD_RATE < 57600
@@ -78,6 +85,9 @@ void serial_init()
 }
 
 void serial_write(uint8_t data) {
+#ifdef RASPBERRYPI
+  putchar(data);
+#else
   // Calculate next head
   uint8_t next_head = tx_buffer_head + 1;
   if (next_head == TX_BUFFER_SIZE) { next_head = 0; }
@@ -91,8 +101,6 @@ void serial_write(uint8_t data) {
   tx_buffer[tx_buffer_head] = data;
   tx_buffer_head = next_head;
 
-#ifdef RASPBERRYPI
-#else  
   // Enable Data Register Empty Interrupt to make sure tx-streaming is running
   UCSR0B |=  (1 << UDRIE0); 
 #endif
@@ -137,6 +145,14 @@ ISR(USART_UDRE_vect)
 
 uint8_t serial_read()
 {
+#ifdef RASPBERRYPI
+  int c;
+  c = getchar();
+  if (c == EOF)
+	return SERIAL_NO_DATA;
+  return c;
+#else
+
   if (rx_buffer_head == rx_buffer_tail) {
     return SERIAL_NO_DATA;
   } else {
@@ -156,6 +172,7 @@ uint8_t serial_read()
     
     return data;
   }
+#endif
 }
 
 #ifdef RASPBERRYPI
