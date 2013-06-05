@@ -48,6 +48,11 @@ system_t sys;
 
 int main(void)
 {
+#ifdef RASPBERRYPI
+  // Lock memory : avoid memory swapping for this program
+  mlockall(MCL_CURRENT|MCL_FUTURE);
+#endif
+
   // Initialize system
   serial_init(); // Setup serial baud rate and interrupts
   settings_init(); // Load grbl settings from EEPROM

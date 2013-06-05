@@ -42,11 +42,18 @@ FUSES      = -U hfuse:w:0xd2:m -U lfuse:w:0xff:m
 # Tune the lines below only if you know what you are doing:
 
 AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE) -B 10 -F
-COMPILE = gcc -Wall -O0 -g -DF_CPU=$(CLOCK) -DRASPBERRYPI -I. -I/home/pi/install/include -ffunction-sections
-#COMPILE = avr-gcc -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) -I. -ffunction-sections
+
+COMPILEXENO = gcc -Wall -O0 -g -DF_CPU=$(CLOCK) -DRASPBERRYPI -I. \
+	-I/home/pi/install/include \
+	-I/usr/xenomai/include -D_GNU_SOURCE -D_REENTRANT -D__XENO__ \
+	-ffunction-sections
+
+COMPILEAVR = avr-gcc -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) -I. -ffunction-sections
+
+COMPILE := $(COMPILEXENO)
 
 # symbolic targets:
-all:	main.elf
+all:	grbl
 #all:	grbl.hex
 
 .c.o:
@@ -77,11 +84,16 @@ load: all
 	bootloadHID grbl.hex
 
 clean:
-	rm -f grbl.hex main.elf $(OBJECTS) $(OBJECTS:.o=.d)
+	rm -f grbl grbl.hex main.elf $(OBJECTS) $(OBJECTS:.o=.d)
 
 # file targets:
+grbl: $(OBJECTS)
+	$(COMPILEXENO) -g -o grbl $(OBJECTS) -lm -Wl,--gc-sections \
+	-L/home/pi/install/lib -lbcm2835 \
+	-lnative -L/usr/xenomai/lib -lxenomai -lpthread -lrt
+
 main.elf: $(OBJECTS)
-	$(COMPILE) -g -o main.elf $(OBJECTS) -lm -Wl,--gc-sections -L/home/pi/install/lib -lbcm2835
+	$(COMPILE) -g -o main.elf $(OBJECTS) -lm -Wl,--gc-sections
 
 grbl.hex: main.elf
 	rm -f grbl.hex
@@ -95,7 +107,7 @@ disasm:	main.elf
 	avr-objdump -d main.elf
 
 cpp:
-	$(COMPILE) -E main.c
+	$(cOMPILE) -E main.c
 
 # include generated header dependencies
 -include $(OBJECTS:.o=.d)
