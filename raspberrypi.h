@@ -11,7 +11,7 @@
 #define PSTR(s) s
 #define sei()
 #define cli()
-#define ISR(m) void ##m(void)
+#define ISR(m) void m(void* targ)
 #define pgm_read_byte_near(s) *s
 
 /* Xenomai */

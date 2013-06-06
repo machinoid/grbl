@@ -22,8 +22,29 @@
 /* The timer calculations of this module informed by the 'RepRap cartesian firmware' by Zack Smith
    and Philipp Tiefenbacher. */
 
+/* 
+Raspberry Pi pin assigment
+P1 - X Y Z A
+GPIO4  - STEPX
+GPIO17 - DIRX
+GPIO18 - STEPY
+GPIO27 - DIRY
+GPIO22 - STEPZ
+GPIO23 - DIRZ
+GPIO24 - STEPA
+GPIO25 - DIRA
+
+P5 - Limit/Home X Y Z and EN
+GPIO28 - LHX
+GPIO29 - LHY
+GPIO30 - LHZ
+GPIO31 - EN
+*/
 #ifdef RASPBERRYPI
 #include <raspberrypi.h>
+/* periodic task */
+RT_TASK TIMER1_COMPA_vect_task;
+
 #else
 #include <avr/interrupt.h>
 #endif
@@ -91,11 +112,13 @@ void st_wake_up()
   // Enable steppers by resetting the stepper disable port
   if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { 
 #ifdef RASPBERRYPI
+       bcm2835_gpio_set(EN);
 #else
     STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); 
 #endif
   } else { 
 #ifdef RASPBERRYPI
+       bcm2835_gpio_clr(EN);
 #else
     STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT);
 #endif
@@ -142,11 +165,13 @@ void st_go_idle()
     delay_ms(settings.stepper_idle_lock_time);
     if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { 
 #ifdef RASPBERRYPI
+       bcm2835_gpio_clr(EN);
 #else
       STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); 
 #endif
     } else { 
 #ifdef RASPBERRYPI
+       bcm2835_gpio_set(EN);
 #else
       STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); 
 #endif
@@ -172,12 +197,76 @@ inline static uint8_t iterate_trapezoid_cycle_counter()
 // config_step_timer. It pops blocks from the block_buffer and executes them by pulsing the stepper pins appropriately. 
 // It is supported by The Stepper Port Reset Interrupt which it uses to reset the stepper port after each pulse. 
 // The bresenham line tracer algorithm controls all three stepper outputs simultaneously with these two interrupts.
+
+#define TASK_PERIOD 100000 /* 100 usc period */
+
 ISR(TIMER1_COMPA_vect)
 {        
+#ifdef RASPBERRYPI
+  unsigned long overruns;
+  unsigned long setbits;
+  unsigned long clrbits;
+  int err;
+  /* The task will undergo a 100 usc periodic timeline. */
+  err = rt_task_set_periodic(NULL,TM_NOW,TASK_PERIOD);
+  for (;;) {
+    err = rt_task_wait_period(&overruns);
+    if (err)
+     break;
+   /* Work for the current period */
+#endif
+
+#ifdef RASPBERRYPI
+  if (busy) { break; }
+#else
   if (busy) { return; } // The busy-flag is used to avoid reentering this interrupt
+#endif
   
   // Set the direction pins a couple of nanoseconds before we step the steppers
 #ifdef RASPBERRYPI
+  if(out_bits & X_STEP_BIT)
+       setbits |= STEPX;
+  else
+       clrbits |= STEPX;
+
+  if(out_bits & X_DIRECTION_BIT)
+       setbits |= DIRX;
+  else
+       clrbits |= DIRX;
+
+  if(out_bits & Y_STEP_BIT)
+       setbits |= STEPY;
+  else
+       clrbits |= STEPY;
+
+  if(out_bits & Y_DIRECTION_BIT)
+       setbits |= DIRY;
+  else
+       clrbits |= DIRY;
+
+  if(out_bits & Z_STEP_BIT)
+       setbits |= STEPZ;
+  else
+       clrbits |= STEPZ;
+
+  if(out_bits & Z_DIRECTION_BIT)
+       setbits |= DIRZ;
+  else
+       clrbits |= DIRZ;
+
+//  if(out_bits & A_STEP_BIT)
+//       setbits |= STEPA;
+//  else
+//       clrbits |= STEPA;
+//
+//  if(out_bits & A_DIRECTION_BIT)
+//       setbits |= DIRA;
+//  else
+//       clrbits |= DIRA;
+
+  bcm2835_gpio_set_multi(setbits);
+  bcm2835_gpio_clr_multi(clrbits);
+
 #else
   STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
 #endif
@@ -347,6 +436,10 @@ ISR(TIMER1_COMPA_vect)
   }
   out_bits ^= settings.invert_mask;  // Apply step and direction invert mask    
   busy = false;
+
+#ifdef RASPBERRYPI
+}
+#endif
 }
 
 // This interrupt is set up by ISR_TIMER1_COMPAREA when it sets the motor port bits. It resets
@@ -355,15 +448,15 @@ ISR(TIMER1_COMPA_vect)
 // a few microseconds, if they execute right before one another. Not a big deal, but can
 // cause issues at high step rates if another high frequency asynchronous interrupt is 
 // added to Grbl.
-#ifdef RASPBERRYPI
-#else
 ISR(TIMER2_OVF_vect)
 {
   // Reset stepping pins (leave the direction pins)
+#ifdef RASPBERRYPI
+#else
   STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask & STEP_MASK); 
   TCCR2B = 0; // Disable Timer2 to prevent re-entering this interrupt when it's not needed. 
-}
 #endif
+}
 
 #ifdef STEP_PULSE_DELAY
   // This interrupt is used only when STEP_PULSE_DELAY is enabled. Here, the step pulse is
@@ -389,9 +482,46 @@ void st_reset()
 // Initialize and start the stepper motor subsystem
 void st_init()
 {
-  // Configure directions of interface pins
 #ifdef RASPBERRYPI
+  // Configure directions of interface pins
+  // GPIOs set as outputs 
+  // 4,17,18,22,23,24,25,27,31
+  bcm2835_gpio_fsel(STEPX, BCM2835_GPIO_FSEL_OUTP);
+  bcm2835_gpio_fsel(DIRX,  BCM2835_GPIO_FSEL_OUTP);
+  bcm2835_gpio_fsel(STEPY, BCM2835_GPIO_FSEL_OUTP);
+  bcm2835_gpio_fsel(DIRY,  BCM2835_GPIO_FSEL_OUTP);
+  bcm2835_gpio_fsel(STEPZ, BCM2835_GPIO_FSEL_OUTP);
+  bcm2835_gpio_fsel(DIRZ,  BCM2835_GPIO_FSEL_OUTP);
+  bcm2835_gpio_fsel(STEPA, BCM2835_GPIO_FSEL_OUTP);
+  bcm2835_gpio_fsel(DIRA,  BCM2835_GPIO_FSEL_OUTP);
+  bcm2835_gpio_fsel(EN,    BCM2835_GPIO_FSEL_OUTP);
+  
+  // GPIOs set as inputs
+  // 28,29,30
+  bcm2835_gpio_fsel(LHX,   BCM2835_GPIO_FSEL_INPT);
+  bcm2835_gpio_fsel(LHY,   BCM2835_GPIO_FSEL_INPT);
+  bcm2835_gpio_fsel(LHZ,   BCM2835_GPIO_FSEL_INPT);
+
+
+/*
+   * Arguments: &task,
+   *            name,
+   *            stack size (0=default),
+   *            priority,
+   *            mode (FPU, start suspended, ...)
+   */
+
+  rt_task_create(&TIMER1_COMPA_vect_task, "TIMER1_COMPA_vect_task", 0, 99, 0);
+
+  /*
+   * Arguments: &task,
+   *            task function,
+   *            function argument
+   */
+  rt_task_start(&TIMER1_COMPA_vect_task, &TIMER1_COMPA_vect, 0);
+
 #else
+  // Configure directions of interface pins
   STEPPING_DDR |= STEPPING_MASK;
   STEPPING_PORT = (STEPPING_PORT & ~STEPPING_MASK) | settings.invert_mask;
   STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;

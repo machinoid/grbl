@@ -32,6 +32,29 @@
 
 // Define pin-assignments
 // NOTE: All step bit and direction pins must be on the same port.
+#ifdef RASPBERRYPI
+#define STEPPING_DDR       BCM2835_GPFSEL0
+#define STEPPING_PORT      *bcm2835_gpio 
+#define X_STEP_BIT         2  // Digital Pin 2
+#define Y_STEP_BIT         3  // Digital Pin 3
+#define Z_STEP_BIT         4  // Digital Pin 4
+#define X_DIRECTION_BIT    5  // Digital Pin 5
+#define Y_DIRECTION_BIT    6  // Digital Pin 6
+#define Z_DIRECTION_BIT    7  // Digital Pin 7
+#define STEPX              RPI_V2_GPIO_P1_07 // GPIO4
+#define DIRX               RPI_V2_GPIO_P1_11 // GPIO17
+#define STEPY              RPI_V2_GPIO_P1_12 // GPIO18
+#define DIRY               RPI_V2_GPIO_P1_13 // GPIO27
+#define STEPZ              RPI_V2_GPIO_P1_15 // GPIO22
+#define DIRZ               RPI_V2_GPIO_P1_16 // GPIO23
+#define STEPA              RPI_V2_GPIO_P1_18 // GPIO24
+#define DIRA               RPI_V2_GPIO_P1_22 // GPIO25
+
+#define LHX                RPI_V2_GPIO_P5_03 // GPIO28
+#define LHY                RPI_V2_GPIO_P5_04 // GPIO29
+#define LHZ                RPI_V2_GPIO_P5_05 // GPIO30
+#define EN                 RPI_V2_GPIO_P5_06 // GPIO31
+#else
 #define STEPPING_DDR       DDRD
 #define STEPPING_PORT      PORTD
 #define X_STEP_BIT         2  // Uno Digital Pin 2
@@ -40,6 +63,7 @@
 #define X_DIRECTION_BIT    5  // Uno Digital Pin 5
 #define Y_DIRECTION_BIT    6  // Uno Digital Pin 6
 #define Z_DIRECTION_BIT    7  // Uno Digital Pin 7
+#endif
 #define STEP_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits
 #define DIRECTION_MASK ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)) // All direction bits
 #define STEPPING_MASK (STEP_MASK | DIRECTION_MASK) // All stepping-related bits (step/direction)
