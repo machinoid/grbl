@@ -44,6 +44,10 @@ GPIO31 - EN
 #include <raspberrypi.h>
 /* periodic task */
 RT_TASK TIMER1_COMPA_vect_task;
+/* one shot alarm */
+#define TIMER2_OVF_ALARM_VALUE 10000 /* First shot at now + 10 us */
+RT_ALARM TIMER2_OVF_vect_alarm;
+RT_TASK TIMER2_OVF_vect_task;
 
 #else
 #include <avr/interrupt.h>
@@ -224,6 +228,16 @@ ISR(TIMER1_COMPA_vect)
   
   // Set the direction pins a couple of nanoseconds before we step the steppers
 #ifdef RASPBERRYPI
+  // Not needed???
+#else
+  STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
+#endif
+
+  // Then pulse the stepping pins
+  #ifdef STEP_PULSE_DELAY
+    step_bits = (STEPPING_PORT & ~STEP_MASK) | out_bits; // Store out_bits to prevent overwriting.
+  #else  // Normal operation
+#ifdef RASPBERRYPI
   if(out_bits & X_STEP_BIT)
        setbits |= STEPX;
   else
@@ -268,21 +282,16 @@ ISR(TIMER1_COMPA_vect)
   bcm2835_gpio_clr_multi(clrbits);
 
 #else
-  STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
-#endif
-
-  // Then pulse the stepping pins
-  #ifdef STEP_PULSE_DELAY
-    step_bits = (STEPPING_PORT & ~STEP_MASK) | out_bits; // Store out_bits to prevent overwriting.
-  #else  // Normal operation
-#ifdef RASPBERRYPI
-#else
     STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | out_bits;
 #endif
   #endif
   // Enable step pulse reset timer so that The Stepper Port Reset Interrupt can reset the signal after
   // exactly settings.pulse_microseconds microseconds, independent of the main Timer1 prescaler.
 #ifdef RASPBERRYPI
+/* step_pulse_time should be used not a fixed value???*/
+  rt_alarm_start(&TIMER2_OVF_vect_alarm,
+      TIMER2_OVF_ALARM_VALUE,
+      TM_INFINITE);
 #else
   TCNT2 = step_pulse_time; // Reload timer counter
   TCCR2B = (1<<CS21); // Begin timer2. Full speed, 1/8 prescaler
@@ -452,6 +461,19 @@ ISR(TIMER2_OVF_vect)
 {
   // Reset stepping pins (leave the direction pins)
 #ifdef RASPBERRYPI
+  unsigned long clrbits;
+  int err;
+  for (;;) {
+    /* Wait for the next alarm to trigger. */
+    err = rt_alarm_wait(&TIMER2_OVF_vect_alarm);
+    if (!err) {
+       clrbits |= STEPX;
+       clrbits |= STEPY;
+       clrbits |= STEPZ;
+       clrbits |= STEPA;
+       bcm2835_gpio_clr_multi(clrbits);
+    }
+  }
 #else
   STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask & STEP_MASK); 
   TCCR2B = 0; // Disable Timer2 to prevent re-entering this interrupt when it's not needed. 
@@ -502,7 +524,27 @@ void st_init()
   bcm2835_gpio_fsel(LHY,   BCM2835_GPIO_FSEL_INPT);
   bcm2835_gpio_fsel(LHZ,   BCM2835_GPIO_FSEL_INPT);
 
+  /* Step reset interrupt */
+  /* One shot alarm */
+  rt_alarm_create(&TIMER2_OVF_vect_alarm, "TIMER2_OVF_vect_alarm");
+/*
+   * Arguments: &task,
+   *            name,
+   *            stack size (0=default),
+   *            priority,
+   *            mode (FPU, start suspended, ...)
+   */
 
+  rt_task_create(&TIMER2_OVF_vect_task, "TIMER2_OVF_vect_task", 0, 99, 0);
+
+  /*
+   * Arguments: &task,
+   *            task function,
+   *            function argument
+   */
+  rt_task_start(&TIMER2_OVF_vect_task, &TIMER2_OVF_vect, 0);
+
+  /* Main stepper interrupt */
 /*
    * Arguments: &task,
    *            name,
@@ -519,7 +561,6 @@ void st_init()
    *            function argument
    */
   rt_task_start(&TIMER1_COMPA_vect_task, &TIMER1_COMPA_vect, 0);
-
 #else
   // Configure directions of interface pins
   STEPPING_DDR |= STEPPING_MASK;

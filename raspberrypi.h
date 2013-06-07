@@ -16,6 +16,7 @@
 
 /* Xenomai */
 #include <native/task.h>
+#include <native/alarm.h>
 #include <native/timer.h>
 
 #include  <rtdk.h>
