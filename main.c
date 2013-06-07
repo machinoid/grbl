@@ -51,6 +51,8 @@ int main(void)
 #ifdef RASPBERRYPI
   // Lock memory : avoid memory swapping for this program
   mlockall(MCL_CURRENT|MCL_FUTURE);
+  if (!bcm2835_init())
+    return -1;
 #endif
 
   // Initialize system

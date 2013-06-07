@@ -202,7 +202,8 @@ inline static uint8_t iterate_trapezoid_cycle_counter()
 // It is supported by The Stepper Port Reset Interrupt which it uses to reset the stepper port after each pulse. 
 // The bresenham line tracer algorithm controls all three stepper outputs simultaneously with these two interrupts.
 
-#define TASK_PERIOD 100000 /* 100 usc period */
+#define TASK_PERIOD 100000000 /* 100000 usc period */
+// #define TASK_PERIOD 100000 /* 100 usc period */
 
 ISR(TIMER1_COMPA_vect)
 {        
@@ -218,6 +219,8 @@ ISR(TIMER1_COMPA_vect)
     if (err)
      break;
    /* Work for the current period */
+///   printf("T");
+   
 #endif
 
 #ifdef RASPBERRYPI
@@ -467,6 +470,7 @@ ISR(TIMER2_OVF_vect)
     /* Wait for the next alarm to trigger. */
     err = rt_alarm_wait(&TIMER2_OVF_vect_alarm);
     if (!err) {
+///       printf("R");
        clrbits |= STEPX;
        clrbits |= STEPY;
        clrbits |= STEPZ;
@@ -505,6 +509,8 @@ void st_reset()
 void st_init()
 {
 #ifdef RASPBERRYPI
+  printf("configuring GPIO outputs\n");
+
   // Configure directions of interface pins
   // GPIOs set as outputs 
   // 4,17,18,22,23,24,25,27,31
@@ -518,6 +524,8 @@ void st_init()
   bcm2835_gpio_fsel(DIRA,  BCM2835_GPIO_FSEL_OUTP);
   bcm2835_gpio_fsel(EN,    BCM2835_GPIO_FSEL_OUTP);
   
+  printf("configuring GPIO inputs\n");
+  
   // GPIOs set as inputs
   // 28,29,30
   bcm2835_gpio_fsel(LHX,   BCM2835_GPIO_FSEL_INPT);
@@ -526,40 +534,27 @@ void st_init()
 
   /* Step reset interrupt */
   /* One shot alarm */
+
+  printf("configuring one shot alarm\n");
+
   rt_alarm_create(&TIMER2_OVF_vect_alarm, "TIMER2_OVF_vect_alarm");
-/*
-   * Arguments: &task,
-   *            name,
-   *            stack size (0=default),
-   *            priority,
-   *            mode (FPU, start suspended, ...)
-   */
+  
+  printf("creating one shot alarm task\n");
 
   rt_task_create(&TIMER2_OVF_vect_task, "TIMER2_OVF_vect_task", 0, 99, 0);
+  
+  printf("starting  one shot alarm task\n");
 
-  /*
-   * Arguments: &task,
-   *            task function,
-   *            function argument
-   */
   rt_task_start(&TIMER2_OVF_vect_task, &TIMER2_OVF_vect, 0);
 
   /* Main stepper interrupt */
-/*
-   * Arguments: &task,
-   *            name,
-   *            stack size (0=default),
-   *            priority,
-   *            mode (FPU, start suspended, ...)
-   */
+
+  printf("creating stepper task\n");
 
   rt_task_create(&TIMER1_COMPA_vect_task, "TIMER1_COMPA_vect_task", 0, 99, 0);
 
-  /*
-   * Arguments: &task,
-   *            task function,
-   *            function argument
-   */
+  printf("starting stepper task\n");
+
   rt_task_start(&TIMER1_COMPA_vect_task, &TIMER1_COMPA_vect, 0);
 #else
   // Configure directions of interface pins
