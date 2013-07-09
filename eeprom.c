@@ -20,6 +20,8 @@
 *
 *                         $Revision: 1.6 $
 *                         $Date: Friday, February 11, 2005 07:16:44 UTC $
+
+  Copyright (c) 2013 Pawel Wodnicki - Linux/Raspberry Pi
 ****************************************************************************/
 #ifdef RASPBERRYPI
 #include <raspberrypi.h>
