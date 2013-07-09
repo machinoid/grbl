@@ -52,6 +52,8 @@ int main(void)
 #ifdef RASPBERRYPI
   // Lock memory : avoid memory swapping for this program
   mlockall(MCL_CURRENT|MCL_FUTURE);
+  // no buffering on stdout
+  setvbuf(stdout, NULL, _IOLBF, 0);
   if (!bcm2835_init())
     return -1;
 #endif

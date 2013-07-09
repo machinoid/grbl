@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <settings.h>
 #else
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -50,6 +51,9 @@ void create_eeprom_file(int size )
 	for(i=0;i<size;i++)
 		fwrite(&c, 1, 1, fp);
 	fclose(fp);
+        // store defaults
+	settings_reset(true);
+        write_global_settings();
 }
 
 unsigned char eeprom_file_get_char( unsigned int addr )
@@ -66,12 +70,11 @@ unsigned char eeprom_file_get_char( unsigned int addr )
 	return c;
 }
 
-void eeprom_file_put_char( unsigned int addr, unsigned char new_value )
+void eeprom_file_put_char( unsigned int addr, unsigned char c )
 {
-        unsigned char c;
         FILE *fp;
         create_eeprom_file(EEPROM_SIZE);
-        fp=fopen("eeprom.bin", "wb");
+        fp=fopen("eeprom.bin", "ab+");
         if (fp == NULL)
                 return;
         fseek(fp,addr,SEEK_SET);

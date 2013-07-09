@@ -4,6 +4,7 @@
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
   Copyright (c) 2011-2012 Sungeun K. Jeon
+  Copyright (c) 2013 Pawel Wodnicki - Linux/Raspberry Pi
   
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -95,5 +96,11 @@ void settings_write_coord_data(uint8_t coord_select, float *coord_data);
 
 // Reads selected coordinate data from EEPROM
 uint8_t settings_read_coord_data(uint8_t coord_select, float *coord_data);
+
+// Method to store Grbl global settings struct and version number into EEPROM
+void write_global_settings();
+
+// Method to reset Grbl global settings back to defaults.
+void settings_reset(bool reset_all);
 
 #endif

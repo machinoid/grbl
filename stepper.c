@@ -204,7 +204,7 @@ inline static uint8_t iterate_trapezoid_cycle_counter()
 // The bresenham line tracer algorithm controls all three stepper outputs simultaneously with these two interrupts.
 
 #define TASK_PERIOD 100000000 /* 100000 usc period */
-// #define TASK_PERIOD 100000 /* 100 usc period */
+///#define TASK_PERIOD 100000 /* 100 usc period */
 
 ISR(TIMER1_COMPA_vect)
 {        
