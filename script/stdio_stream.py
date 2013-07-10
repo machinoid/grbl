@@ -44,6 +44,7 @@ for line in f:
     print 'Reading: '
     grbl_out = proc.stdout.readline() # Wait for grbl response with carriage return
     print ' : ' + grbl_out.strip()
+    time.sleep(0.1)
 
 # Wait here until grbl is finished to close file.
 raw_input("  Press <Enter> to exit and disable grbl.") 

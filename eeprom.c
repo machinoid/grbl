@@ -29,6 +29,10 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <settings.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include<sys/mman.h>
+#include<fcntl.h>
 #else
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -37,49 +41,76 @@
 
 #ifdef RASPBERRYPI
 #define EEPROM_SIZE 2048
+#define FILEMODE S_IRWXU | S_IRGRP | S_IROTH
+int fd;
+char EEPROM[EEPROM_SIZE];
+char *EEaddr=NULL;
 
-void create_eeprom_file(int size )
+void create_eeprom_file()
 {
         unsigned char c;
 	int i;
+	int ret;
+	int store_defaults;
+	size_t len_file;
+	struct stat st;
 	FILE *fp;
-	fp=fopen("eeprom.bin", "rb");
-        if (fp != NULL)
+	store_defaults = 0;
+	if ((fd = open("eeprom.bin",O_RDWR, FILEMODE)) < 0) {
+		fp=fopen("eeprom.bin", "wb");
+		if (fp == NULL) {
+			printf("error : create_eeprom_file() failed to create eeprom.bin\n");
+               		return;
+		}
+		c = 0;
+		for(i=0;i<EEPROM_SIZE;i++)
+			fwrite(&c, 1, 1, fp);
+		fclose(fp);
+        	// store defaults
+		store_defaults=1;
+	}
+	// mmap it
+
+	if ((fd = open("eeprom.bin",O_RDWR | O_CREAT, FILEMODE)) < 0) {
+		printf("error : create_eeprom_file failed to mmap eeprom.bin\n");
 		return;
-	fp=fopen("eeprom.bin", "wb");
-	c = 0;
-	for(i=0;i<size;i++)
-		fwrite(&c, 1, 1, fp);
-	fclose(fp);
-        // store defaults
-	settings_reset(true);
-        write_global_settings();
+	}
+	if ((ret = fstat(fd,&st)) < 0) {
+        	printf("Error in fstat");
+        	return;
+    	}
+
+	len_file = st.st_size;
+
+	/*len_file having the total length of the file(fd).*/
+
+	if ((EEaddr = mmap(NULL,len_file,PROT_READ|PROT_WRITE,MAP_SHARED,fd,0)) == MAP_FAILED) {
+        	printf("Error in mmap");
+        	return;
+	}
+
+	// do we need to store defaults?
+	if (store_defaults) {
+                settings_reset(true);
+                write_global_settings();
+	}
+
 }
 
 unsigned char eeprom_file_get_char( unsigned int addr )
 {
 	unsigned char c;
-	FILE *fp;
-	create_eeprom_file(EEPROM_SIZE);
-        fp=fopen("eeprom.bin", "rb");
-	if (fp == NULL)
+	if (!EEaddr)
 		return 0xf;
-	fseek(fp,addr,SEEK_SET);
-	fread(&c,1,1,fp); 
-	fclose(fp);
+	c = *(EEaddr+addr);
 	return c;
 }
 
 void eeprom_file_put_char( unsigned int addr, unsigned char c )
 {
-        FILE *fp;
-        create_eeprom_file(EEPROM_SIZE);
-        fp=fopen("eeprom.bin", "ab+");
-        if (fp == NULL)
+        if (!EEaddr)
                 return;
-        fseek(fp,addr,SEEK_SET);
-	fwrite(&c, 1, 1, fp);
-	fclose(fp);
+        *(EEaddr+addr)=c;
 }
 
 #endif

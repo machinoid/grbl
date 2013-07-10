@@ -199,6 +199,9 @@ uint8_t protocol_execute_line(char *line)
     float parameter, value;
     switch( line[char_counter] ) {
       case 0 : report_grbl_help(); break;
+#ifdef RASPBERRYPI
+      case 'Q' : exit(0); break;
+#endif
       case '$' : // Prints Grbl settings
         if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
         else { report_grbl_settings(); }

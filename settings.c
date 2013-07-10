@@ -208,6 +208,9 @@ uint8_t settings_store_global_setting(int parameter, float value) {
 
 // Initialize the config subsystem
 void settings_init() {
+#ifdef RASPBERRYPI
+	create_eeprom_file();
+#endif
   if(!read_global_settings()) {
     report_status_message(STATUS_SETTING_READ_FAIL);
     settings_reset(true);
