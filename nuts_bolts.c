@@ -4,6 +4,7 @@
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
   Copyright (c) 2011-2012 Sungeun K. Jeon
+  Copyright (c) 2013 Pawel Wodnicki - Linux/Raspberry Pi
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -83,8 +84,12 @@ int read_float(char *line, uint8_t *char_counter, float *float_ptr)
   
   // Convert integer into floating point.
   float fval;
+#ifdef RASPBERRYPI
+  fval = (float)intval;
+#else
   fval = __floatunsisf(intval);
-  
+ #endif
+ 
   // Apply decimal. Should perform no more than two floating point multiplications for the
   // expected range of E0 to E-4.
   if (fval != 0) {
