@@ -49,4 +49,7 @@ void st_cycle_reinitialize();
 // Initiates a feed hold of the running program
 void st_feed_hold();
 
+// De-initialize and stop the stepper motor subsystem
+void st_exit();
+
 #endif

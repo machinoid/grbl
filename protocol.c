@@ -200,7 +200,7 @@ uint8_t protocol_execute_line(char *line)
     switch( line[char_counter] ) {
       case 0 : report_grbl_help(); break;
 #ifdef RASPBERRYPI
-      case 'Q' : exit(0); break;
+      case 'Q' : st_exit(); exit(0); break;
 #endif
       case '$' : // Prints Grbl settings
         if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }

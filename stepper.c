@@ -203,8 +203,8 @@ inline static uint8_t iterate_trapezoid_cycle_counter()
 // It is supported by The Stepper Port Reset Interrupt which it uses to reset the stepper port after each pulse. 
 // The bresenham line tracer algorithm controls all three stepper outputs simultaneously with these two interrupts.
 
-#define TASK_PERIOD 100000000 /* 100000 usc period */
-///#define TASK_PERIOD 100000 /* 100 usc period */
+///#define TASK_PERIOD 100000000 /* 100000 usc period */
+#define TASK_PERIOD 100000 /* 100 usc period */
 
 ISR(TIMER1_COMPA_vect)
 {        
@@ -213,14 +213,24 @@ ISR(TIMER1_COMPA_vect)
   unsigned long setbits;
   unsigned long clrbits;
   int err;
+  unsigned long errcnt;
+///  printf("Ts");
   /* The task will undergo a 100 usc periodic timeline. */
   err = rt_task_set_periodic(NULL,TM_NOW,TASK_PERIOD);
   for (;;) {
     err = rt_task_wait_period(&overruns);
-    if (err)
-     break;
+    if (err) {
+        // deal with the error
+        // -EWOULDBLOCK
+        // -EINTR
+        // -ETIMEDOUT
+        // -EPERM
+        errcnt++;
+        // just keep going
+    }
+
    /* Work for the current period */
-///   printf("T");
+//   printf("T");
    
 #endif
 
@@ -330,6 +340,8 @@ ISR(TIMER1_COMPA_vect)
   } 
 
   if (current_block != NULL) {
+///   printf("B");
+
     // Execute step displacement profile by bresenham line algorithm
     out_bits = current_block->direction_bits;
     st.counter_x += current_block->steps_x;
@@ -443,6 +455,7 @@ ISR(TIMER1_COMPA_vect)
       }            
     } else {   
       // If current block is finished, reset pointer 
+///      printf("N");
       current_block = NULL;
       plan_discard_current_block();
     }
@@ -451,6 +464,7 @@ ISR(TIMER1_COMPA_vect)
   busy = false;
 
 #ifdef RASPBERRYPI
+///  printf("Te");
 }
 #endif
 }
@@ -471,13 +485,13 @@ ISR(TIMER2_OVF_vect)
     /* Wait for the next alarm to trigger. */
     err = rt_alarm_wait(&TIMER2_OVF_vect_alarm);
     if (!err) {
-///       printf("R");
-       clrbits |= STEPX;
-       clrbits |= STEPY;
-       clrbits |= STEPZ;
-       clrbits |= STEPA;
-       bcm2835_gpio_clr_multi(clrbits);
     }
+///    printf("R");
+    clrbits |= STEPX;
+    clrbits |= STEPY;
+    clrbits |= STEPZ;
+    clrbits |= STEPA;
+    bcm2835_gpio_clr_multi(clrbits);
   }
 #else
   STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask & STEP_MASK); 
@@ -510,6 +524,7 @@ void st_reset()
 void st_init()
 {
 #ifdef RASPBERRYPI
+  int rt;
   printf("configuring GPIO outputs\n");
 
   // Configure directions of interface pins
@@ -538,25 +553,25 @@ void st_init()
 
   printf("configuring one shot alarm\n");
 
-  rt_alarm_create(&TIMER2_OVF_vect_alarm, "TIMER2_OVF_vect_alarm");
+  rt = rt_alarm_create(&TIMER2_OVF_vect_alarm, "TIMER2_OVF_vect_alarm");
   
   printf("creating one shot alarm task\n");
 
-  rt_task_create(&TIMER2_OVF_vect_task, "TIMER2_OVF_vect_task", 0, 99, 0);
+  rt = rt_task_create(&TIMER2_OVF_vect_task, "TIMER2_OVF_vect_task", 0, 99, 0);
   
   printf("starting  one shot alarm task\n");
 
-  rt_task_start(&TIMER2_OVF_vect_task, &TIMER2_OVF_vect, 0);
+  rt = rt_task_start(&TIMER2_OVF_vect_task, &TIMER2_OVF_vect, 0);
 
   /* Main stepper interrupt */
 
   printf("creating stepper task\n");
 
-  rt_task_create(&TIMER1_COMPA_vect_task, "TIMER1_COMPA_vect_task", 0, 99, 0);
+  rt = rt_task_create(&TIMER1_COMPA_vect_task, "TIMER1_COMPA_vect_task", 0, 99, 0);
 
   printf("starting stepper task\n");
 
-  rt_task_start(&TIMER1_COMPA_vect_task, &TIMER1_COMPA_vect, 0);
+  rt = rt_task_start(&TIMER1_COMPA_vect_task, &TIMER1_COMPA_vect, 0);
 #else
   // Configure directions of interface pins
   STEPPING_DDR |= STEPPING_MASK;
@@ -585,6 +600,20 @@ void st_init()
   // Start in the idle state, but first wake up to check for keep steppers enabled option.
   st_wake_up();
   st_go_idle();
+}
+
+// De-initialize and stop the stepper motor subsystem
+void st_exit()
+{
+#ifdef RASPBERRYPI
+   int err;
+   err = rt_alarm_stop(&TIMER2_OVF_vect_alarm);
+   err = rt_alarm_delete(&TIMER2_OVF_vect_alarm);
+   err = rt_task_suspend(&TIMER2_OVF_vect_task);
+   err = rt_task_delete(&TIMER2_OVF_vect_task);
+   err = rt_task_suspend(&TIMER1_COMPA_vect_task);
+   err = rt_task_delete(&TIMER1_COMPA_vect_task);
+#endif
 }
 
 // Configures the prescaler and ceiling of timer 1 to produce the given rate as accurately as possible.
