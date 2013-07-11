@@ -215,7 +215,9 @@ ISR(TIMER1_COMPA_vect)
 #ifdef RASPBERRYPI
   unsigned long overruns;
   unsigned long setbits;
+  unsigned long setdbits;
   unsigned long clrbits;
+  unsigned long clrdbits;
   int err;
   unsigned long errcnt;
 ///  printf("Ts");
@@ -261,6 +263,7 @@ ISR(TIMER1_COMPA_vect)
   #else  // Normal operation
 #ifdef RASPBERRYPI
   setbits=clrbits=0;
+  setdbits=clrdbits=0;
   // translate to GPIO bits
   if(out_bits & 1<<X_STEP_BIT)
        setbits |= 1<<STEPX;
@@ -268,9 +271,9 @@ ISR(TIMER1_COMPA_vect)
        clrbits |= 1<<STEPX;
 
   if(out_bits & 1<<X_DIRECTION_BIT)
-       setbits |= 1<<DIRX;
+       setdbits |= 1<<DIRX;
   else
-       clrbits |= 1<<DIRX;
+       clrdbits |= 1<<DIRX;
 
   if(out_bits & 1<<Y_STEP_BIT)
        setbits |= 1<<STEPY;
@@ -278,9 +281,9 @@ ISR(TIMER1_COMPA_vect)
        clrbits |= 1<<STEPY;
 
   if(out_bits & 1<<Y_DIRECTION_BIT)
-       setbits |= 1<<DIRY;
+       setdbits |= 1<<DIRY;
   else
-       clrbits |= 1<<DIRY;
+       clrdbits |= 1<<DIRY;
 
   if(out_bits & 1<<Z_STEP_BIT)
        setbits |= 1<<STEPZ;
@@ -288,9 +291,9 @@ ISR(TIMER1_COMPA_vect)
        clrbits |= 1<<STEPZ;
 
   if(out_bits & 1<<Z_DIRECTION_BIT)
-       setbits |= 1<<DIRZ;
+       setdbits |= 1<<DIRZ;
   else
-       clrbits |= 1<<DIRZ;
+       clrdbits |= 1<<DIRZ;
 
 //  if(out_bits & 1<<A_STEP_BIT)
 //       setbits |= 1<<STEPA;
@@ -298,10 +301,12 @@ ISR(TIMER1_COMPA_vect)
 //       clrbits |= 1<<STEPA;
 //
 //  if(out_bits & 1<<A_DIRECTION_BIT)
-//       setbits |= 1<<DIRA;
+//       setdbits |= 1<<DIRA;
 //  else
-//       clrbits |= 1<<DIRA;
+//       clrdbits |= 1<<DIRA;
 
+  bcm2835_gpio_set_multi(setdbits);
+  bcm2835_gpio_clr_multi(clrdbits);
   bcm2835_gpio_set_multi(setbits);
   bcm2835_gpio_clr_multi(clrbits);
 
@@ -498,7 +503,7 @@ ISR(TIMER2_OVF_vect)
     if (!err) {
     }
     ///printf("R");
-    clrbits |= 1<<STEPX;
+    clrbits  = 1<<STEPX;
     clrbits |= 1<<STEPY;
     clrbits |= 1<<STEPZ;
     clrbits |= 1<<STEPA;
