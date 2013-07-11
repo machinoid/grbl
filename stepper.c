@@ -44,9 +44,12 @@ GPIO31 - EN
 #ifdef RASPBERRYPI
 #include <raspberrypi.h>
 /* periodic task */
+#define TIMER1_COMPA_ALARM_VALUE 100000 /* First shot at now + 100 us */
 RT_TASK TIMER1_COMPA_vect_task;
+RT_ALARM TIMER1_COMPA_vect_alarm;
 /* one shot alarm */
-#define TIMER2_OVF_ALARM_VALUE 10000 /* First shot at now + 10 us */
+#define TIMER2_OVF_ALARM_VALUE 100000 /* First shot at now + 100 us */
+///#define TIMER2_OVF_ALARM_VALUE 10000 /* First shot at now + 10 us */
 RT_ALARM TIMER2_OVF_vect_alarm;
 RT_TASK TIMER2_OVF_vect_task;
 
@@ -204,7 +207,8 @@ inline static uint8_t iterate_trapezoid_cycle_counter()
 // The bresenham line tracer algorithm controls all three stepper outputs simultaneously with these two interrupts.
 
 ///#define TASK_PERIOD 100000000 /* 100000 usc period */
-#define TASK_PERIOD 100000 /* 100 usc period */
+#define TASK_PERIOD 100000 /* 1000 usc period */
+///#define TASK_PERIOD 100000 /* 100 usc period */
 
 ISR(TIMER1_COMPA_vect)
 {        
@@ -216,9 +220,13 @@ ISR(TIMER1_COMPA_vect)
   unsigned long errcnt;
 ///  printf("Ts");
   /* The task will undergo a 100 usc periodic timeline. */
-  err = rt_task_set_periodic(NULL,TM_NOW,TASK_PERIOD);
+///  err = rt_task_set_periodic(NULL,TM_NOW,TASK_PERIOD);
   for (;;) {
-    err = rt_task_wait_period(&overruns);
+///    err = rt_task_wait_period(&overruns);
+    /* Wait for the next alarm to trigger. */
+    err = rt_alarm_wait(&TIMER1_COMPA_vect_alarm);
+///  printf("Ta");
+
     if (err) {
         // deal with the error
         // -EWOULDBLOCK
@@ -230,12 +238,12 @@ ISR(TIMER1_COMPA_vect)
     }
 
    /* Work for the current period */
-//   printf("T");
+///   printf("T");
    
 #endif
 
 #ifdef RASPBERRYPI
-  if (busy) { break; }
+  if (busy) { continue; }
 #else
   if (busy) { return; } // The busy-flag is used to avoid reentering this interrupt
 #endif
@@ -252,45 +260,47 @@ ISR(TIMER1_COMPA_vect)
     step_bits = (STEPPING_PORT & ~STEP_MASK) | out_bits; // Store out_bits to prevent overwriting.
   #else  // Normal operation
 #ifdef RASPBERRYPI
-  if(out_bits & X_STEP_BIT)
-       setbits |= STEPX;
+  setbits=clrbits=0;
+  // translate to GPIO bits
+  if(out_bits & 1<<X_STEP_BIT)
+       setbits |= 1<<STEPX;
   else
-       clrbits |= STEPX;
+       clrbits |= 1<<STEPX;
 
-  if(out_bits & X_DIRECTION_BIT)
-       setbits |= DIRX;
+  if(out_bits & 1<<X_DIRECTION_BIT)
+       setbits |= 1<<DIRX;
   else
-       clrbits |= DIRX;
+       clrbits |= 1<<DIRX;
 
-  if(out_bits & Y_STEP_BIT)
-       setbits |= STEPY;
+  if(out_bits & 1<<Y_STEP_BIT)
+       setbits |= 1<<STEPY;
   else
-       clrbits |= STEPY;
+       clrbits |= 1<<STEPY;
 
-  if(out_bits & Y_DIRECTION_BIT)
-       setbits |= DIRY;
+  if(out_bits & 1<<Y_DIRECTION_BIT)
+       setbits |= 1<<DIRY;
   else
-       clrbits |= DIRY;
+       clrbits |= 1<<DIRY;
 
-  if(out_bits & Z_STEP_BIT)
-       setbits |= STEPZ;
+  if(out_bits & 1<<Z_STEP_BIT)
+       setbits |= 1<<STEPZ;
   else
-       clrbits |= STEPZ;
+       clrbits |= 1<<STEPZ;
 
-  if(out_bits & Z_DIRECTION_BIT)
-       setbits |= DIRZ;
+  if(out_bits & 1<<Z_DIRECTION_BIT)
+       setbits |= 1<<DIRZ;
   else
-       clrbits |= DIRZ;
+       clrbits |= 1<<DIRZ;
 
-//  if(out_bits & A_STEP_BIT)
-//       setbits |= STEPA;
+//  if(out_bits & 1<<A_STEP_BIT)
+//       setbits |= 1<<STEPA;
 //  else
-//       clrbits |= STEPA;
+//       clrbits |= 1<<STEPA;
 //
-//  if(out_bits & A_DIRECTION_BIT)
-//       setbits |= DIRA;
+//  if(out_bits & 1<<A_DIRECTION_BIT)
+//       setbits |= 1<<DIRA;
 //  else
-//       clrbits |= DIRA;
+//       clrbits |= 1<<DIRA;
 
   bcm2835_gpio_set_multi(setbits);
   bcm2835_gpio_clr_multi(clrbits);
@@ -457,6 +467,7 @@ ISR(TIMER1_COMPA_vect)
       // If current block is finished, reset pointer 
 ///      printf("N");
       current_block = NULL;
+      out_bits = 0; /// something is strange as the original did not need that
       plan_discard_current_block();
     }
   }
@@ -486,11 +497,11 @@ ISR(TIMER2_OVF_vect)
     err = rt_alarm_wait(&TIMER2_OVF_vect_alarm);
     if (!err) {
     }
-///    printf("R");
-    clrbits |= STEPX;
-    clrbits |= STEPY;
-    clrbits |= STEPZ;
-    clrbits |= STEPA;
+    ///printf("R");
+    clrbits |= 1<<STEPX;
+    clrbits |= 1<<STEPY;
+    clrbits |= 1<<STEPZ;
+    clrbits |= 1<<STEPA;
     bcm2835_gpio_clr_multi(clrbits);
   }
 #else
@@ -559,15 +570,18 @@ void st_init()
 
   rt = rt_task_create(&TIMER2_OVF_vect_task, "TIMER2_OVF_vect_task", 0, 99, 0);
   
-  printf("starting  one shot alarm task\n");
+  printf("starting one shot alarm task\n");
 
   rt = rt_task_start(&TIMER2_OVF_vect_task, &TIMER2_OVF_vect, 0);
 
   /* Main stepper interrupt */
 
-  printf("creating stepper task\n");
+  printf("creating stepper alarm\n");
 
-  rt = rt_task_create(&TIMER1_COMPA_vect_task, "TIMER1_COMPA_vect_task", 0, 99, 0);
+  rt = rt_alarm_create(&TIMER1_COMPA_vect_alarm, "TIMER1_COMPA_vect_alarm");
+  
+  printf("creating stepper task\n");
+  rt = rt_task_create(&TIMER1_COMPA_vect_task, "TIMER1_COMPA_vEct_task", 0, 99, 0);
 
   printf("starting stepper task\n");
 
@@ -607,12 +621,21 @@ void st_exit()
 {
 #ifdef RASPBERRYPI
    int err;
-   err = rt_alarm_stop(&TIMER2_OVF_vect_alarm);
-   err = rt_alarm_delete(&TIMER2_OVF_vect_alarm);
-   err = rt_task_suspend(&TIMER2_OVF_vect_task);
-   err = rt_task_delete(&TIMER2_OVF_vect_task);
+
+// stop alarm then kill task TIMER1 and alarm or we get alarm
+// storm in the task
+// no matter the order we TIMER2_OVF_vect_task triggering
+// like an R storm 
    err = rt_task_suspend(&TIMER1_COMPA_vect_task);
    err = rt_task_delete(&TIMER1_COMPA_vect_task);
+   err = rt_alarm_stop(&TIMER1_COMPA_vect_alarm);
+   err = rt_alarm_delete(&TIMER1_COMPA_vect_alarm);
+
+   err = rt_task_suspend(&TIMER2_OVF_vect_task);
+   err = rt_alarm_stop(&TIMER2_OVF_vect_alarm);
+   err = rt_task_delete(&TIMER2_OVF_vect_task);
+   err = rt_alarm_delete(&TIMER2_OVF_vect_alarm);
+
 #endif
 }
 
@@ -623,6 +646,11 @@ static uint32_t config_step_timer(uint32_t cycles)
   uint16_t ceiling;
   uint8_t prescaler;
   uint32_t actual_cycles;
+#ifdef RASPBERRYPI
+  int err;
+  long int period;
+#endif
+
   if (cycles <= 0xffffL) {
     ceiling = cycles;
     prescaler = 1; // prescaler: 0
@@ -650,6 +678,16 @@ static uint32_t config_step_timer(uint32_t cycles)
     actual_cycles = 0xffff * 1024;
   }
 #ifdef RASPBERRYPI
+/// this version overflows
+///   period = 1000000000 * actual_cycles / F_CPU ; // in nanoseconds
+   period = (actual_cycles * 1000) / TICKS_PER_MICROSECOND ; 
+   err = rt_alarm_start(&TIMER1_COMPA_vect_alarm,
+      TIMER1_COMPA_ALARM_VALUE,
+      period);
+
+///   err = rt_task_suspend(&TIMER1_COMPA_vect_task);
+///   err = rt_task_set_periodic(&TIMER1_COMPA_vect_task,TM_NOW,period);
+///   err = rt_task_resume(&TIMER1_COMPA_vect_task);
 #else
   // Set prescaler
   TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (prescaler<<CS10);
