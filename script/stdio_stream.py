@@ -48,6 +48,8 @@ for line in f:
 
 # Wait here until grbl is finished to close file.
 raw_input("  Press <Enter> to exit and disable grbl.") 
+proc.stdin.write('$Q\n') # Send quit
+proc.stdin.flush()
 
 # Close file
 f.close()
