@@ -36,12 +36,12 @@
 #ifdef RASPBERRYPI
 #define STEPPING_DDR       BCM2835_GPFSEL0
 #define STEPPING_PORT      *bcm2835_gpio 
-#define X_STEP_BIT         2  // Digital Pin 2
-#define Y_STEP_BIT         3  // Digital Pin 3
-#define Z_STEP_BIT         4  // Digital Pin 4
-#define X_DIRECTION_BIT    5  // Digital Pin 5
-#define Y_DIRECTION_BIT    6  // Digital Pin 6
-#define Z_DIRECTION_BIT    7  // Digital Pin 7
+#define X_STEP_BIT         2  // GPIO4  P1 Pin 7
+#define Y_STEP_BIT         3  // GPIO18 P1 Pin 12
+#define Z_STEP_BIT         4  // GPIO15 P1 Pin 15
+#define X_DIRECTION_BIT    5  // GPIO17 P1 Pin 11
+#define Y_DIRECTION_BIT    6  // GPIO27 P1 Pin 13
+#define Z_DIRECTION_BIT    7  // GPIO23 P1 Pin 16
 #define STEPX              RPI_V2_GPIO_P1_07 // GPIO4
 #define DIRX               RPI_V2_GPIO_P1_11 // GPIO17
 #define STEPY              RPI_V2_GPIO_P1_12 // GPIO18
@@ -50,11 +50,6 @@
 #define DIRZ               RPI_V2_GPIO_P1_16 // GPIO23
 #define STEPA              RPI_V2_GPIO_P1_18 // GPIO24
 #define DIRA               RPI_V2_GPIO_P1_22 // GPIO25
-
-#define LHX                RPI_V2_GPIO_P5_03 // GPIO28
-#define LHY                RPI_V2_GPIO_P5_04 // GPIO29
-#define LHZ                RPI_V2_GPIO_P5_05 // GPIO30
-#define EN                 RPI_V2_GPIO_P5_06 // GPIO31
 #else
 #define STEPPING_DDR       DDRD
 #define STEPPING_PORT      PORTD
@@ -79,9 +74,13 @@
 #define LIMIT_DDR       BCM2835_GPFSEL0
 #define LIMIT_PIN       4
 #define LIMIT_PORT      BCM2835_GPLEV0
-#define X_LIMIT_BIT     1  // Uno Digital Pin 9
-#define Y_LIMIT_BIT     2  // Uno Digital Pin 10
-#define Z_LIMIT_BIT     3  // Uno Digital Pin 11
+#define X_LIMIT_BIT     28  // GPIO28 P5 Pin 3
+#define Y_LIMIT_BIT     29  // GPIO29 P5 Pin 4
+#define Z_LIMIT_BIT     30  // GPIO30 P5 Pin 5
+#define LHX             RPI_V2_GPIO_P5_03 // GPIO28
+#define LHY             RPI_V2_GPIO_P5_04 // GPIO29
+#define LHZ             RPI_V2_GPIO_P5_05 // GPIO30
+#define EN              RPI_V2_GPIO_P5_06 // GPIO31
 #define LIMIT_INT       PCIE0  // Pin change interrupt enable pin
 #define LIMIT_INT_vect  PCINT0_vect
 #define LIMIT_PCMSK     BCM2835_GPEDS0 // Pin change interrupt register
