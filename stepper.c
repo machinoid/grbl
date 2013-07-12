@@ -40,6 +40,7 @@ GPIO28 - LHX
 GPIO29 - LHY
 GPIO30 - LHZ
 GPIO31 - EN
+
 */
 #ifdef RASPBERRYPI
 #include <raspberrypi.h>
@@ -152,6 +153,13 @@ void st_wake_up()
     #endif
     // Enable stepper driver interrupt
 #ifdef RASPBERRYPI
+    /// re-start alarm by setting step events per minute
+    if (current_block != NULL) {
+        ///st.trapezoid_adjusted_rate = current_block->initial_rate;
+        set_step_events_per_minute(current_block->initial_rate);
+    } else {
+    	set_step_events_per_minute(MINIMUM_STEPS_PER_MINUTE);
+    } 
 #else
     TIMSK1 |= (1<<OCIE1A);
 #endif
@@ -163,6 +171,8 @@ void st_go_idle()
 {
   // Disable stepper driver interrupt
 #ifdef RASPBERRYPI
+  // stop the alarm
+  rt_alarm_stop(&TIMER1_COMPA_vect_alarm);
 #else
   TIMSK1 &= ~(1<<OCIE1A); 
 #endif
