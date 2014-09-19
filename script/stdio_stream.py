@@ -20,7 +20,7 @@ import time
 proc = subprocess.Popen("../grbl", shell=True, stdout=subprocess.PIPE, stdin=subprocess.PIPE)
 
 # Open g-code file
-f = open('grbl.gcode','r');
+f = open('grbl.gcode','r');  # grbl.gcode should be "***.nc" file
 
 # Wake up grbl
 proc.stdin.write("\r\n\r\n")
